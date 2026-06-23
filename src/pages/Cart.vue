@@ -71,17 +71,44 @@
         <MnButton
           variant="primary"
           fullWidth
-          @click="handleCheckout"
+          @click="showConfirm = true"
         >
           Bayar
         </MnButton>
       </div>
     </div>
+
+    <!-- Confirm Dialog -->
+    <Teleport to="body">
+      <div v-if="showConfirm" class="overlay" @click.self="showConfirm = false">
+        <div class="dialog">
+          <h3 class="dialog__title">Konfirmasi Pembayaran</h3>
+          <p class="dialog__text">Anda akan membayar <strong>{{ formatPrice(cartStore.totalPrice) }}</strong> untuk {{ cartStore.items.length }} item.</p>
+          <div class="dialog__actions">
+            <MnButton variant="secondary" fullWidth @click="showConfirm = false">Batal</MnButton>
+            <MnButton variant="primary" fullWidth :loading="checkoutLoading" @click="handleCheckout">Ya, Bayar</MnButton>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Success Dialog -->
+    <Teleport to="body">
+      <div v-if="showSuccess" class="overlay">
+        <div class="dialog dialog--success">
+          <div class="dialog__icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h3 class="dialog__title">Pembayaran Berhasil!</h3>
+          <p class="dialog__text">Transaksi Anda telah diproses.</p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../store/cart'
 import { useAuthStore } from '../store/auth'
@@ -92,6 +119,10 @@ const cartStore = useCartStore()
 const authStore = useAuthStore()
 
 const isLoggedIn = computed(() => authStore.isAuthenticated || !!localStorage.getItem('userName'))
+
+const showConfirm = ref(false)
+const showSuccess = ref(false)
+const checkoutLoading = ref(false)
 
 function formatPrice(price) {
   return new Intl.NumberFormat('id-ID', {
@@ -116,11 +147,19 @@ async function handleRemove(id) {
 }
 
 async function handleCheckout() {
+  checkoutLoading.value = true
   try {
-    const result = await cartStore.doCheckout()
-    router.push({ name: 'Cart' })
+    await cartStore.doCheckout()
+    showConfirm.value = false
+    showSuccess.value = true
+    setTimeout(() => {
+      showSuccess.value = false
+      router.push({ name: 'Riwayat' })
+    }, 1500)
   } catch {
-    // error handled by store
+    showConfirm.value = false
+  } finally {
+    checkoutLoading.value = false
   }
 }
 
@@ -425,5 +464,58 @@ onMounted(() => {
   font-size: 18px;
   font-weight: 700;
   color: var(--color-primary);
+}
+
+/* ─── Overlay & Dialog ─── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 320px;
+  background: var(--color-surface);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialog--success {
+  align-items: center;
+  text-align: center;
+}
+
+.dialog__icon {
+  color: var(--color-success);
+}
+
+.dialog__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.dialog__text {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.dialog__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
 }
 </style>

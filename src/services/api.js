@@ -17,6 +17,29 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+let isRedirecting = false
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status !== 401) return Promise.reject(error)
+
+    const url = error.config?.url || ''
+    if (url.includes('/auth/login') || url.includes('/auth/register')) {
+      return Promise.reject(error)
+    }
+
+    if (!isRedirecting) {
+      isRedirecting = true
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('userName')
+      window.location.href = '/login'
+    }
+
+    return Promise.reject(error)
+  }
+)
+
 export async function getCsrfCookie() {
   await api.get('/sanctum/csrf-cookie')
 }
