@@ -1,7 +1,8 @@
 <template>
   <div class="app">
-    <!-- Header -->
-    <header class="app-header">
+    <div class="app__frame">
+      <!-- Header -->
+      <header class="app-header">
       <div class="app-header__left">
         <h1 class="app-header__brand">MWL 13</h1>
       </div>
@@ -86,6 +87,7 @@
         <span>Profile</span>
       </button>
     </nav>
+    </div>
   </div>
 </template>
 
@@ -154,6 +156,27 @@ onMounted(() => {
   min-height: 100vh;
   background: var(--color-bg);
   padding-bottom: 72px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.app__frame {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  background: var(--color-surface);
+  box-shadow: 0 0 40px rgba(0,0,0,0.1);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  position: relative;
+}
+
+@media (max-width: 430px) {
+  .app__frame {
+    box-shadow: none;
+    border: none;
+  }
 }
 
 /* ─── Header ─── */

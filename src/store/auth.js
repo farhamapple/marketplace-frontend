@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as apiLogin, getUser, logout as apiLogout } from '../services/api'
+import { login as apiLogin, register as apiRegister, getUser, logout as apiLogout } from '../services/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -17,6 +17,20 @@ export const useAuthStore = defineStore('auth', () => {
       await fetchUser()
     } catch (err) {
       error.value = err.response?.data?.message || 'Login failed'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function register(name, email, password, passwordConfirmation) {
+    loading.value = true
+    error.value = null
+    try {
+      await apiRegister(name, email, password, passwordConfirmation)
+      await fetchUser()
+    } catch (err) {
+      error.value = err.response?.data?.message || 'Registration failed'
       throw err
     } finally {
       loading.value = false
@@ -40,5 +54,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, loading, error, isAuthenticated, login, fetchUser, logout }
+  return { user, loading, error, isAuthenticated, login, register, fetchUser, logout }
 })

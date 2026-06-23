@@ -7,8 +7,16 @@
     </div>
 
     <div class="login-card">
-      <h2 class="login-card__title">Sign In</h2>
-      <form @submit.prevent="handleLogin" class="login-form">
+      <h2 class="login-card__title">Daftar Akun</h2>
+      <form @submit.prevent="handleRegister" class="login-form">
+        <MnInput
+          v-model="name"
+          label="Nama"
+          type="text"
+          placeholder="Nama lengkap"
+          :error="errors.name"
+        />
+
         <MnInput
           v-model="email"
           label="Email"
@@ -21,8 +29,16 @@
           v-model="password"
           label="Password"
           type="password"
-          placeholder="Enter your password"
+          placeholder="Minimal 8 karakter"
           :error="errors.password"
+        />
+
+        <MnInput
+          v-model="passwordConfirmation"
+          label="Konfirmasi Password"
+          type="password"
+          placeholder="Ulangi password"
+          :error="errors.passwordConfirmation"
         />
 
         <div v-if="authError" class="login-form__alert">
@@ -35,12 +51,12 @@
           :loading="authStore.loading"
           fullWidth
         >
-          Sign In
+          Daftar
         </MnButton>
 
         <p class="login-form__footer">
-          Belum punya akun?
-          <router-link :to="{ name: 'Register' }" class="login-form__link">Daftar</router-link>
+          Sudah punya akun?
+          <router-link :to="{ name: 'Login' }" class="login-form__link">Masuk</router-link>
         </p>
       </form>
     </div>
@@ -52,37 +68,45 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
-import MnCard from '../components/MnCard.vue'
 import MnInput from '../components/MnInput.vue'
 import MnButton from '../components/MnButton.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
+const name = ref('')
 const email = ref('')
 const password = ref('')
-const errors = reactive({ email: '', password: '' })
+const passwordConfirmation = ref('')
+const errors = reactive({ name: '', email: '', password: '', passwordConfirmation: '' })
 const authError = ref('')
 
-async function handleLogin() {
+async function handleRegister() {
+  errors.name = ''
   errors.email = ''
   errors.password = ''
+  errors.passwordConfirmation = ''
   authError.value = ''
 
-  if (!email.value) errors.email = 'Email is required'
-  if (!password.value) errors.password = 'Password is required'
-  if (errors.email || errors.password) return
+  if (!name.value.trim()) errors.name = 'Nama harus diisi'
+  if (!email.value) errors.email = 'Email harus diisi'
+  if (!password.value) errors.password = 'Password harus diisi'
+  else if (password.value.length < 8) errors.password = 'Password minimal 8 karakter'
+  if (!passwordConfirmation.value) errors.passwordConfirmation = 'Konfirmasi password harus diisi'
+  else if (password.value !== passwordConfirmation.value) errors.passwordConfirmation = 'Password tidak cocok'
+  if (errors.name || errors.email || errors.password || errors.passwordConfirmation) return
 
   try {
-    await authStore.login(email.value, password.value)
+    await authStore.register(name.value.trim(), email.value, password.value, passwordConfirmation.value)
     router.push({ name: 'Marketplace' })
   } catch (err) {
     const data = err.response?.data
     if (data?.errors) {
+      errors.name = data.errors.name?.[0] || ''
       errors.email = data.errors.email?.[0] || ''
       errors.password = data.errors.password?.[0] || ''
     }
-    authError.value = data?.message || 'Invalid email or password'
+    authError.value = data?.message || 'Registrasi gagal'
   }
 }
 </script>

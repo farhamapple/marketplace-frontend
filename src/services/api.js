@@ -29,6 +29,15 @@ export async function getUser() {
   return api.get('/api/v1/auth/me')
 }
 
+export async function register(name, email, password, passwordConfirmation) {
+  const deviceName = generateDeviceName()
+  return api.post('/api/v1/auth/register', {
+    name, email, password,
+    password_confirmation: passwordConfirmation,
+    device_name: deviceName,
+  })
+}
+
 export async function logout() {
   return api.post('/api/v1/auth/logout')
 }
