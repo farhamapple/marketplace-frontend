@@ -9,19 +9,26 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value)
 
-  async function login(email, password) {
-    loading.value = true
-    error.value = null
-    try {
-      await apiLogin(email, password)
-      await fetchUser()
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Login failed'
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
+   async function login(email, password) {
+     loading.value = true
+     error.value = null
+     try {
+       const loginRes = await apiLogin(email, password)
+       const token = loginRes.data.token || loginRes.data.data?.token
+       if (token) {
+         localStorage.setItem('authToken', token)
+       }
+       await fetchUser()
+       if (user.value) {
+         localStorage.setItem('userName', user.value.name)
+       }
+     } catch (err) {
+       error.value = err.response?.data?.message || 'Login failed'
+       throw err
+     } finally {
+       loading.value = false
+     }
+   }
 
   async function register(name, email, password, passwordConfirmation) {
     loading.value = true
@@ -37,22 +44,29 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function fetchUser() {
-    try {
-      const response = await getUser()
-      user.value = response.data.data || response.data
-    } catch {
-      user.value = null
-    }
-  }
+    async function fetchUser() {
+     try {
+       const response = await getUser()
+       user.value = response.data.data || response.data
+       if (user.value) {
+         localStorage.setItem('userName', user.value.name)
+       }
+     } catch {
+       user.value = null
+       localStorage.removeItem('userName')
+       localStorage.removeItem('authToken')
+     }
+   }
 
-  async function logout() {
-    try {
-      await apiLogout()
-    } finally {
-      user.value = null
-    }
-  }
+   async function logout() {
+     try {
+       await apiLogout()
+     } finally {
+       user.value = null
+       localStorage.removeItem('userName')
+       localStorage.removeItem('authToken')
+     }
+   }
 
   return { user, loading, error, isAuthenticated, login, register, fetchUser, logout }
 })

@@ -7,14 +7,8 @@
         <h1 class="app-header__brand">MWL 13</h1>
       </div>
       <div class="app-header__right">
-        <template v-if="authStore.isAuthenticated">
-          <button class="app-header__avatar" @click="showMenu = !showMenu">
-            {{ initials }}
-          </button>
-          <div v-if="showMenu" class="app-header__dropdown" @click="handleLogout">
-            <span>{{ authStore.user?.email }}</span>
-            <span class="app-header__dropdown-action">Keluar</span>
-          </div>
+        <template v-if="isLoggedIn">
+          <span class="app-header__user-name">{{ userName }}</span>
         </template>
         <template v-else>
           <router-link :to="{ name: 'Login' }" class="app-header__link">Masuk</router-link>
@@ -68,25 +62,28 @@
       </div>
     </main>
 
-    <!-- Bottom Nav -->
-    <nav class="app-bottom">
-      <button class="app-bottom__item app-bottom__item--active">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        <span>Beranda</span>
-      </button>
-      <button class="app-bottom__item">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <span>Cari</span>
-      </button>
-      <button class="app-bottom__item">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
-        <span>Keranjang</span>
-      </button>
-      <button class="app-bottom__item">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <span>Profile</span>
-      </button>
-    </nav>
+     <!-- Bottom Nav -->
+     <nav class="app-bottom">
+       <button class="app-bottom__item app-bottom__item--active">
+         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+         <span>Beranda</span>
+       </button>
+       <router-link :to="{ name: 'Cart' }" class="app-bottom__item">
+         <div class="app-bottom__icon-wrap">
+           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+           <span v-if="cartStore.totalItems > 0" class="app-bottom__badge">{{ cartStore.totalItems > 99 ? '99+' : cartStore.totalItems }}</span>
+         </div>
+         <span>Keranjang</span>
+       </router-link>
+       <router-link :to="{ name: 'Riwayat' }" class="app-bottom__item">
+         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+         <span>Riwayat</span>
+       </router-link>
+         <router-link :to="{ name: 'Profile' }" class="app-bottom__item">
+         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+         <span>Profile</span>
+       </router-link>
+     </nav>
     </div>
   </div>
 </template>
@@ -95,11 +92,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import { useCartStore } from '../store/cart'
 import { getProducts, getCategories } from '../services/api'
 import ProductCard from '../components/ProductCard.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const cartStore = useCartStore()
 
 const showMenu = ref(false)
 const products = ref([])
@@ -108,8 +107,12 @@ const loading = ref(true)
 const searchQuery = ref('')
 const activeCategory = ref('')
 
+const userName = computed(() => authStore.user?.name || localStorage.getItem('userName') || '')
+
+const isLoggedIn = computed(() => authStore.isAuthenticated || !!localStorage.getItem('userName'))
+
 const initials = computed(() => {
-  const name = authStore.user?.name || 'U'
+  const name = userName.value || 'U'
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 })
 
@@ -143,11 +146,18 @@ async function fetchData() {
 
 async function handleLogout() {
   await authStore.logout()
+  localStorage.removeItem('userName')
   router.push({ name: 'Marketplace' })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  if (!authStore.user && localStorage.getItem('userName')) {
+    await authStore.fetchUser()
+  }
   fetchData()
+  if (isLoggedIn.value) {
+    cartStore.fetchCart()
+  }
 })
 </script>
 
@@ -384,5 +394,29 @@ onMounted(() => {
 
 .app-bottom__item--active {
   color: var(--color-primary);
+}
+
+.app-bottom__icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-bottom__badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--color-error);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border-radius: 9999px;
+  font-family: var(--font-sans);
 }
 </style>

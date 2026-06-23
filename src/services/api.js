@@ -9,6 +9,14 @@ const api = axios.create({
   },
 })
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
 export async function getCsrfCookie() {
   await api.get('/sanctum/csrf-cookie')
 }
@@ -22,7 +30,12 @@ function generateDeviceName() {
 
 export async function login(email, password) {
   await getCsrfCookie()
-  return api.post('/api/v1/auth/login', { email, password, device_name: generateDeviceName() })
+  const response = await api.post('/api/v1/auth/login', { email, password, device_name: generateDeviceName() })
+  const token = response.data.token || response.data.data?.token
+  if (token) {
+    localStorage.setItem('authToken', token)
+  }
+  return response
 }
 
 export async function getUser() {
@@ -39,7 +52,11 @@ export async function register(name, email, password, passwordConfirmation) {
 }
 
 export async function logout() {
-  return api.post('/api/v1/auth/logout')
+  try {
+    await api.post('/api/v1/auth/logout')
+  } finally {
+    localStorage.removeItem('authToken')
+  }
 }
 
 export async function getProducts(params) {
@@ -52,6 +69,34 @@ export async function getProduct(id) {
 
 export async function getCategories() {
   return api.get('/api/v1/categories')
+}
+
+export async function getCart() {
+  return api.get('/api/v1/cart')
+}
+
+export async function addToCart(productId, quantity = 1) {
+  return api.post('/api/v1/cart', { product_id: productId, quantity })
+}
+
+export async function updateCartItem(id, quantity) {
+  return api.patch(`/api/v1/cart/${id}`, { quantity })
+}
+
+export async function removeCartItem(id) {
+  return api.delete(`/api/v1/cart/${id}`)
+}
+
+export async function checkout() {
+  return api.post('/api/v1/cart/checkout')
+}
+
+export async function getTransactions(params) {
+  return api.get('/api/v1/transactions', { params })
+}
+
+export async function getTransaction(id) {
+  return api.get(`/api/v1/transactions/${id}`)
 }
 
 export default api
